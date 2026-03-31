@@ -13,7 +13,11 @@
 
 #include "buffer.hpp"
 
-static const std::string WEBROOT{"../../../Web"}; // /main/src/outout/main.o
+std::string WEBROOT{"../../../Web"}; // /main/src/outout/main.o
+
+void setwebroot(const std::string &path) {
+    WEBROOT = path;
+}
 
 struct httpsection
 {

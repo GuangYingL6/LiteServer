@@ -6,6 +6,7 @@ USE_ROUTER_APP
 
 int main()
 {
+    setwebroot("../../../Web");
     ThreadSet ts;
     ts.setip("127.0.0.1")
         .setport(8080)

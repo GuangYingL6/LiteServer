@@ -1,4 +1,4 @@
-#include "../json.hpp"
+#include "../../../include/json/json.hpp"
 
 class User : public json::JsonBase<User>
 {
