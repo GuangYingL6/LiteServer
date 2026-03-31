@@ -1,0 +1,8 @@
+# 忽略文件
+/Dockerfile
+/CMakeLists.txt
+
+# 忽略目录
+/build/
+/.vscode/
+output/
