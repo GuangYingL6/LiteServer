@@ -53,7 +53,8 @@ public:
     std::string url;
     std::string version;
     std::string buffer;
-
+    std::string body;
+    bool is_read_body = false;
 
     httpsection section;
 
@@ -61,6 +62,7 @@ public:
     {
         READ_LINE,
         PARSER_LINE,
+        READ_BODY,
         REQUEST_END
     };
     parser_stat stat = READ_LINE;
@@ -81,13 +83,19 @@ public:
             {
             case READ_LINE:
             {
-                char *p = h;
-                for (; p - h < buffer.cont && *p != '\n'; ++p)
-                {
+                if (buffer.cont <= 0) {
+                    return 0;
                 }
+                char *p = h;
+                for (; p - h < buffer.cont; ++p)
+                {
+                    if (!is_read_body && *p == '\n')
+                        break;
+                }
+                
                 if (p - h < buffer.cont)
                 {
-                    if (h == buffer.ptr())
+                    if (h == buffer.ptr() && !is_read_body)
                     {
                         req.buffer += std::string(h, p);
                     }
@@ -95,12 +103,21 @@ public:
                     {
                         req.buffer = std::string(h, p);
                     }
+                    buffer.cont -= p - h + 1;
                     h = p + 1;
+                    if (is_read_body) {
+                        stat = READ_BODY;
+                        break;
+                    }
                     stat = PARSER_LINE;
                 }
                 else
                 {
                     req.buffer = std::string(h, p);
+                    if (is_read_body) {
+                        stat = READ_BODY;
+                        break;
+                    }
                     return 0;
                 }
                 break;
@@ -132,6 +149,11 @@ public:
                     //std::cout << buf.size() << std::endl;
                     if (buf == "\r")
                     {
+                        if (section.Content_Length > 0) {
+                            is_read_body = true;
+                            stat = READ_LINE;
+                            break;
+                        }
                         stat = REQUEST_END;
                         break;
                     }
@@ -159,6 +181,21 @@ public:
                     else if (key == "Content_Type") {
                         section.Content_Type = value;
                     }
+                }
+                stat = READ_LINE;
+                break;
+            }
+            case READ_BODY: {
+                std::string buf = "";
+                std::swap(buf, req.buffer);
+                body.append(std::string_view(buf));
+                std::cout << "req.body:" << body << std::endl;
+                std::cout << "req.body.size:" << body.size() << " Content_Length:" << section.Content_Length << std::endl;
+                if (body.size() >= section.Content_Length)
+                {
+                    is_read_body = false;
+                    stat = REQUEST_END;
+                    break;
                 }
                 stat = READ_LINE;
                 break;

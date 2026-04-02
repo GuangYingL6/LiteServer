@@ -16,16 +16,20 @@ int main()
     app.addRoute_lambda("GET", "/api/lambda",
                         [](request &req, std::function<void(const response &)> &&callback)
                         {
+                            std::cout << req.body << std::endl;
                             response res;
                             res.reason = "OK";
                             res.version = "HTTP/1.1";
                             res.retcode = "200";
-                            res.setfile("/res/img/index0.jpg");
+                            res.body = req.body;
+                            // res.setfile("/res/img/index0.jpg");
                             std::cout << "lambda" << std::endl;
                             callback(res);
                         });
+
     IndexServlet idxs;
 
+    
     ts.run();
 
     return 0;
