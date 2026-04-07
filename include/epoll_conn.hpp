@@ -6,6 +6,7 @@
 
 #include "buffer.hpp"
 #include "http.hpp"
+#include "timer/timer_heap.hpp"
 
 struct conn
 {
@@ -26,6 +27,7 @@ struct conn
     file_buffer fbuf;
     httpsection section{};
     char_buffer_que bufque;
+    retimedata tdata{};
 };
 
 int setnonblocking(int fd)

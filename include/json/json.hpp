@@ -197,7 +197,6 @@ namespace json {
             if (idx != -1)
                 ++cnt;
         }
-
         for (auto& [k, v] : dom) {
             std::cout << k << ":" << v << std::endl;
         }

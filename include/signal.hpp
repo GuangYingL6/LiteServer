@@ -8,6 +8,7 @@
 #include <mutex>
 
 #include "epoll_conn.hpp"
+#include "timer/timer_heap.hpp"
 
 class signalctl {
     static signalctl *ptr;
@@ -23,6 +24,7 @@ class signalctl {
         addsig(SIGHUP);
         addsig(SIGPIPE);
         addsig(SIGINT);
+        addtimersig();
     }
 
 public:
@@ -59,6 +61,24 @@ public:
         sa.sa_flags |= SA_RESTART;
         sigfillset(&sa.sa_mask);
         if (sigaction(sig, &sa, NULL) == -1)
+            throw;
+    }
+
+    static void timer_sig_handler(int sig) {
+        int save_errno = errno;
+        int msg = sig;
+        TimerHeap::make_timerheap()->tick();
+        send(pipefd[1], (char *)&msg, 1, 0);
+        errno = save_errno;
+    }
+    static void addtimersig()
+    {
+        struct sigaction sa;
+        memset(&sa, '\0', sizeof(sa));
+        sa.sa_handler = timer_sig_handler;
+        sa.sa_flags |= SA_RESTART;
+        sigfillset(&sa.sa_mask);
+        if (sigaction(SIGALRM, &sa, NULL) == -1)
             throw;
     }
 };
