@@ -40,6 +40,8 @@ struct retimedata {
     void update(int64_t sec = TIMEOUTSEC)
     {
         std::unique_lock<std::mutex> lock(mtx);
+        if (!is_timeout)
+            return;
         is_timeout = false;
         auto outt = std::chrono::seconds(sec);
         newtimer = std::chrono::steady_clock::now() + outt;

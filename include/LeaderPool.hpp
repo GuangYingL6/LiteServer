@@ -145,29 +145,37 @@ public:
             {
                 conn *con = (conn *)events[i].data.ptr;
                 int sockfd = con->fd;
-                if (con->tdata.is_timeout && sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
+                if (sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
                 {
-                    if (retimedata::getnow() < con->tdata.gettimer()) {
-                        con->tdata.update();//未超时
-                        std::cout << "[un time out]" << std::endl;
-                    } else { // 超时
-                        epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
-                        if (auto it = conptrs.find(sockfd); it != conptrs.end())
-                            conptrs.erase(it);
-                        if (sockfd != -1)
+                    if (con->tdata.is_timeout) {
+                        if (retimedata::getnow() < con->tdata.gettimer())
                         {
-                            shutdown(sockfd, SHUT_RDWR);
-                            close(sockfd);
-                            sockfd = -1;
+                            con->tdata.update(); // 未超时
+                            TimerHeap::make_timerheap()->add(timedata{sockfd, con->tdata.gettimer()});
+                            std::cout << "[un time out]" << std::endl;
                         }
-                        // shutdown(sockfd, SHUT_RD);
-                        std::cout << "[time out]" << std::endl;
-                        if (con)
-                        {
-                            delete con;
-                            con = nullptr;
+                        else
+                        { // 超时
+                            epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
+                            if (auto it = conptrs.find(sockfd); it != conptrs.end())
+                                conptrs.erase(it);
+                            if (sockfd != -1)
+                            {
+                                shutdown(sockfd, SHUT_RDWR);
+                                close(sockfd);
+                                sockfd = -1;
+                            }
+                            // shutdown(sockfd, SHUT_RD);
+                            std::cout << "[time out]" << std::endl;
+                            if (con)
+                            {
+                                delete con;
+                                con = nullptr;
+                            }
+                            continue;
                         }
-                        continue;
+                    } else {
+                        con->tdata.update();
                     }
                 }
                 if ((sockfd == signalctl::get_signalctl()->out()) && (events[i].events & EPOLLIN))
@@ -440,31 +448,40 @@ public:
                         // delete con;
                     }
                 }
-                if (con->tdata.is_timeout && sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
+                if (sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
                 {
-                    if (retimedata::getnow() < con->tdata.gettimer())
+                    if (con->tdata.is_timeout)
                     {
-                        con->tdata.update(); // 未超时
+                        if (retimedata::getnow() < con->tdata.gettimer())
+                        {
+                            con->tdata.update(); // 未超时
+                            TimerHeap::make_timerheap()->add(timedata{sockfd, con->tdata.gettimer()});
+                            std::cout << "[un time out]" << std::endl;
+                        }
+                        else
+                        { // 超时
+                            epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
+                            if (auto it = conptrs.find(sockfd); it != conptrs.end())
+                                conptrs.erase(it);
+                            if (sockfd != -1)
+                            {
+                                shutdown(sockfd, SHUT_RDWR);
+                                close(sockfd);
+                                sockfd = -1;
+                            }
+                            // shutdown(sockfd, SHUT_RD);
+                            std::cout << "[time out]" << std::endl;
+                            if (con)
+                            {
+                                delete con;
+                                con = nullptr;
+                            }
+                            continue;
+                        }
                     }
                     else
-                    { // 超时
-                        epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
-                        if (auto it = conptrs.find(sockfd); it != conptrs.end())
-                            conptrs.erase(it);
-                        if (sockfd != -1)
-                        {
-                            shutdown(sockfd, SHUT_RDWR);
-                            close(sockfd);
-                            sockfd = -1;
-                        }
-                        // shutdown(sockfd, SHUT_RD);
-                        std::cout << "[time out]" << std::endl;
-                        if (con)
-                        {
-                            delete con;
-                            con = nullptr;
-                        }
-                        continue;
+                    {
+                        con->tdata.update();
                     }
                 }
             }
