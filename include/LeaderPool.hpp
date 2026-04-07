@@ -147,35 +147,30 @@ public:
                 int sockfd = con->fd;
                 if (sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
                 {
-                    if (con->tdata.is_timeout) {
-                        if (retimedata::getnow() < con->tdata.gettimer())
+                    if (retimedata::getnow() < con->tdata.gettimer())
+                    {
+                        con->tdata.update(); // 未超时
+                        std::cout << "[un time out]" << std::endl;
+                    }
+                    else
+                    { // 超时
+                        epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
+                        if (auto it = conptrs.find(sockfd); it != conptrs.end())
+                            conptrs.erase(it);
+                        if (sockfd != -1)
                         {
-                            con->tdata.update(); // 未超时
-                            TimerHeap::make_timerheap()->add(timedata{sockfd, con->tdata.gettimer()});
-                            std::cout << "[un time out]" << std::endl;
+                            shutdown(sockfd, SHUT_RDWR);
+                            close(sockfd);
+                            sockfd = -1;
                         }
-                        else
-                        { // 超时
-                            epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
-                            if (auto it = conptrs.find(sockfd); it != conptrs.end())
-                                conptrs.erase(it);
-                            if (sockfd != -1)
-                            {
-                                shutdown(sockfd, SHUT_RDWR);
-                                close(sockfd);
-                                sockfd = -1;
-                            }
-                            // shutdown(sockfd, SHUT_RD);
-                            std::cout << "[time out]" << std::endl;
-                            if (con)
-                            {
-                                delete con;
-                                con = nullptr;
-                            }
-                            continue;
+                        // shutdown(sockfd, SHUT_RD);
+                        std::cout << "[time out]" << std::endl;
+                        if (con)
+                        {
+                            delete con;
+                            con = nullptr;
                         }
-                    } else {
-                        con->tdata.update();
+                        continue;
                     }
                 }
                 if ((sockfd == signalctl::get_signalctl()->out()) && (events[i].events & EPOLLIN))
@@ -220,7 +215,8 @@ public:
                                         epoll_modconn(this->epollfd, con, EPOLLOUT);
                                         std::cout << "TimeOut: [fd:" << td.fd << "]" << std::endl;
                                     } else {
-                                        TimerHeap::make_timerheap()->add(timedata{td.fd, conptrs[td.fd]->tdata.gettimer()});// 重新注册 延时
+                                        conptrs[td.fd]->tdata.is_timeout = true;
+                                        TimerHeap::make_timerheap()->add(timedata{td.fd, conptrs[td.fd]->tdata.gettimer()}); // 重新注册 延时
                                     }
                                 }
                                 break;
@@ -450,38 +446,29 @@ public:
                 }
                 if (sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
                 {
-                    if (con->tdata.is_timeout)
-                    {
-                        if (retimedata::getnow() < con->tdata.gettimer())
-                        {
-                            con->tdata.update(); // 未超时
-                            TimerHeap::make_timerheap()->add(timedata{sockfd, con->tdata.gettimer()});
-                            std::cout << "[un time out]" << std::endl;
-                        }
-                        else
-                        { // 超时
-                            epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
-                            if (auto it = conptrs.find(sockfd); it != conptrs.end())
-                                conptrs.erase(it);
-                            if (sockfd != -1)
-                            {
-                                shutdown(sockfd, SHUT_RDWR);
-                                close(sockfd);
-                                sockfd = -1;
-                            }
-                            // shutdown(sockfd, SHUT_RD);
-                            std::cout << "[time out]" << std::endl;
-                            if (con)
-                            {
-                                delete con;
-                                con = nullptr;
-                            }
-                            continue;
-                        }
+                    if (retimedata::getnow() < con->tdata.gettimer()) {
+                        con->tdata.update(); // 未超时
+                        std::cout << "[un time out]" << std::endl;
                     }
                     else
-                    {
-                        con->tdata.update();
+                    { // 超时
+                        epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, nullptr);
+                        if (auto it = conptrs.find(sockfd); it != conptrs.end())
+                            conptrs.erase(it);
+                        if (sockfd != -1)
+                        {
+                            shutdown(sockfd, SHUT_RDWR);
+                            close(sockfd);
+                            sockfd = -1;
+                        }
+                        // shutdown(sockfd, SHUT_RD);
+                        std::cout << "[time out]" << std::endl;
+                        if (con)
+                        {
+                            delete con;
+                            con = nullptr;
+                        }
+                        continue;
                     }
                 }
             }
