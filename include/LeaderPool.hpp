@@ -147,9 +147,8 @@ public:
                 int sockfd = con->fd;
                 if (sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
                 {
-                    if (retimedata::getnow() < con->tdata.gettimer())
-                    {
-                        con->tdata.update(); // 未超时
+                    if (con->tdata.check_update())
+                    { //未超时
                         std::cout << "[un time out]" << std::endl;
                     }
                     else
@@ -446,8 +445,8 @@ public:
                 }
                 if (sockfd != listenfd && sockfd != signalctl::get_signalctl()->out())
                 {
-                    if (retimedata::getnow() < con->tdata.gettimer()) {
-                        con->tdata.update(); // 未超时
+                    if (con->tdata.check_update())
+                    { // 未超时
                         std::cout << "[un time out]" << std::endl;
                     }
                     else

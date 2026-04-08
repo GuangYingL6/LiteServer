@@ -32,23 +32,34 @@ struct retimedata {
     std::mutex mtx;
     timepoint newtimer;
 
-    timepoint gettimer() {
-        std::unique_lock<std::mutex> lock(mtx);
-        return newtimer;
-    }
-
+private:
     void update(int64_t sec = TIMEOUTSEC)
     {
-        std::unique_lock<std::mutex> lock(mtx);
         if (!is_timeout)
             return;
         is_timeout = false;
         auto outt = std::chrono::seconds(sec);
         newtimer = std::chrono::steady_clock::now() + outt;
     }
+
     static timepoint getnow() {
         return std::chrono::steady_clock::now();
     }
+
+public:
+    timepoint gettimer() {
+        std::unique_lock<std::mutex> lock(mtx);
+        return newtimer;
+    }
+    bool check_update()
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+        if (getnow() < newtimer) {
+            update();
+            return true;
+        }
+        return false;
+    };
 };
 
 class TimerHeap
